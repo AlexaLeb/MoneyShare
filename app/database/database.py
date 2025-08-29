@@ -1,7 +1,6 @@
 from sqlmodel import SQLModel, Session, create_engine
 
 from .config import get_settings
-from models.services import balance, transaction, user
 from logger.logging import get_logger
 
 logger = get_logger(logger_name=__name__)

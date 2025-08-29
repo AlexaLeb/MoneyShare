@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  app:
+    build: ./app
+    ports:
+     - 1234:1234
+    env_file:
+    - ./app/.env
+    volumes:
+      - ./app:/app
+    depends_on:
+      - database
+    restart: always
+
+  database:
+    image: postgres:15
+    container_name: split-bot-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
