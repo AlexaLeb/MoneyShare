@@ -16,7 +16,14 @@ class Transaction(SQLModel, table=True):
 
     chat: "Chat" = Relationship(back_populates="transactions")
     creator: "User" = Relationship(back_populates="transactions_created")
-    participants: List["TransactionParticipant"] = Relationship(back_populates="transaction")
+    # Каскад и delete-orphan прокидываем через sa_relationship_kwargs
+    participants: List["TransactionParticipant"] = Relationship(
+        back_populates="transaction",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "single_parent": True,
+        },
+    )
 
     def __repr__(self) -> str:
         return f"Transaction(id={self.id}, chat_id={self.chat_id}, creator_id={self.creator_id}, amount={self.amount})"

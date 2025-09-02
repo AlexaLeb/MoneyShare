@@ -44,5 +44,12 @@ def delete_participant(session: Session, id: int) -> bool:
     return True
 
 
-def list_participants(session: Session) -> List[TransactionParticipant]:
-    return session.exec(select(TransactionParticipant)).all()
+def list_participants(
+    session: Session, transaction_id: int
+) -> List[TransactionParticipant]:
+    stmt = (
+        select(TransactionParticipant)
+        .where(TransactionParticipant.transaction_id == transaction_id)
+        .order_by(TransactionParticipant.id)
+    )
+    return list(session.exec(stmt))

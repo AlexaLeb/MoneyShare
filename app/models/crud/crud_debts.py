@@ -42,5 +42,12 @@ def delete_debt(session: Session, id: int) -> bool:
     return True
 
 
-def list_debts(session: Session) -> List[Debt]:
-    return session.exec(select(Debt)).all()
+def list_debts(session: Session, chat_id: int, limit: int = 100, offset: int = 0) -> List[Debt]:
+    stmt = (
+        select(Debt)
+        .where(Debt.chat_id == chat_id)
+        .order_by(Debt.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(session.exec(stmt))
