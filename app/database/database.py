@@ -9,7 +9,7 @@ logger = get_logger(logger_name=__name__)
 # Создаем движок на основе URL, полученного из настроек
 engine = create_engine(
     url=get_settings().DATABASE_URL_psycopg,
-    echo=True,
+    echo=False,
     pool_size=5,
     max_overflow=10
 )

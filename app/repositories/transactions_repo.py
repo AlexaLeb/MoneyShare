@@ -7,6 +7,7 @@ from models.crud.crud_transactions import (
     create_transaction, get_transaction, list_transactions, delete_transaction,
 )
 
+
 class TransactionsRepoSqlModel(TransactionsRepo):
     def __init__(self, session: Session) -> None:
         self.session = session

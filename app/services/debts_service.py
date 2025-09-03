@@ -53,7 +53,7 @@ class DebtsService:
                 balances[creator_id] = 0.0
 
             # Все участники этой транзакции
-            parts = self.parts.list_by_transaction(tx.id)
+            parts = self.parts.list_by_transaction(transaction_id=tx.id)
             # Если участников нет — пропускаем
             if not parts:
                 continue

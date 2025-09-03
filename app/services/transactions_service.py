@@ -37,7 +37,6 @@ class TransactionsService:
         creator_id: int,
         amount: float,
         title: Optional[str],
-        created_at: Optional[datetime] = None,
     ) -> Transaction:
         """
         Создаём транзакцию и её участников одной «операцией».
@@ -48,8 +47,9 @@ class TransactionsService:
             creator_id=creator_id,
             amount=amount,
             title=title,
-            created_at=created_at or datetime.utcnow(),
         )
+
+        return tx
 
     def create_transaction_with_participants(
         self,
@@ -59,7 +59,6 @@ class TransactionsService:
         amount: float,
         title: Optional[str],
         participants: Sequence[int],
-        created_at: Optional[datetime] = None,
     ) -> tuple[Transaction, list[TransactionParticipant]]:
         """
         Создаём транзакцию и её участников одной «операцией».
@@ -70,14 +69,13 @@ class TransactionsService:
             creator_id=creator_id,
             amount=amount,
             title=title,
-            created_at=created_at or datetime.utcnow(),
         )
 
         created_parts: list[TransactionParticipant] = []
         for user_id in participants:
             part = self.parts.create(
                 transaction_id=tx.id,
-                user_id=user_id[0],
+                user_id=user_id,
                 share_amount=amount/(len(participants)),
                 tag=title or "без указания типа транзакции",
             )
@@ -124,7 +122,7 @@ class TransactionsService:
         Это избегает NOT NULL конфликтов по FK.
         """
         # Удаление участников
-        all_parts = self.parts.list_by_transaction(transaction_id)
+        all_parts = self.parts.list_by_transaction(transaction_id=transaction_id)
         for p in all_parts:
             self.parts.delete(id=p.id)
 

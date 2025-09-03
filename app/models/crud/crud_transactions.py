@@ -45,5 +45,12 @@ def delete_transaction(session: Session, id: int, deleted_at: Optional[datetime]
     return True
 
 
-def list_transactions(session: Session) -> List[Transaction]:
-    return session.exec(select(Transaction)).all()
+def list_transactions(session: Session, *, chat_id: Optional[int] = None, limit: Optional[int] = None, offset: int = 0) \
+        -> List[Transaction]:
+    stmt = select(Transaction)
+    if chat_id is not None:
+        stmt = stmt.where(Transaction.chat_id == chat_id)
+    stmt = stmt.order_by(Transaction.id).offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return session.exec(stmt).all()
