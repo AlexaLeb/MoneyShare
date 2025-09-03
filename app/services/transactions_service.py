@@ -30,6 +30,27 @@ class TransactionsService:
         self.parts = parts_repo
         self.debts = debts_repo  # пригодится если нужно триггерить пересчёт
 
+    def create_transaction(
+        self,
+        *,
+        chat_id: int,
+        creator_id: int,
+        amount: float,
+        title: Optional[str],
+        created_at: Optional[datetime] = None,
+    ) -> Transaction:
+        """
+        Создаём транзакцию и её участников одной «операцией».
+        participants: список кортежей (user_id, share_amount, tag)
+        """
+        tx = self.txs.create(
+            chat_id=chat_id,
+            creator_id=creator_id,
+            amount=amount,
+            title=title,
+            created_at=created_at or datetime.utcnow(),
+        )
+
     def create_transaction_with_participants(
         self,
         *,
@@ -37,7 +58,7 @@ class TransactionsService:
         creator_id: int,
         amount: float,
         title: Optional[str],
-        participants: Sequence[Tuple[int, float, Optional[str]]],
+        participants: Sequence[int],
         created_at: Optional[datetime] = None,
     ) -> tuple[Transaction, list[TransactionParticipant]]:
         """
@@ -53,12 +74,12 @@ class TransactionsService:
         )
 
         created_parts: list[TransactionParticipant] = []
-        for user_id, share, tag in participants:
+        for user_id in participants:
             part = self.parts.create(
                 transaction_id=tx.id,
-                user_id=user_id,
-                share_amount=share,
-                tag=tag or "без указания типа транзакции",
+                user_id=user_id[0],
+                share_amount=amount/(len(participants)),
+                tag=title or "без указания типа транзакции",
             )
             created_parts.append(part)
 

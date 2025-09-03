@@ -41,5 +41,6 @@ def delete_chat(session: Session, id: int) -> bool:
     return True
 
 
-def list_chats(session: Session) -> List[Chat]:
-    return session.exec(select(Chat)).all()
+def list_chats(session: Session, limit: int = 100, offset: int = 0) -> List[Chat]:
+    return session.exec(select(Chat).offset(offset).limit(limit)).all()
+

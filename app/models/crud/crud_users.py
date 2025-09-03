@@ -42,5 +42,5 @@ def delete_user(session: Session, id: int) -> bool:
     return True
 
 
-def list_users(session: Session) -> List[User]:
-    return session.exec(select(User)).all()
+def list_users(session: Session, limit: int = 100, offset: int = 0) -> List[User]:
+    return session.exec(select(User).offset(offset).limit(limit)).all()

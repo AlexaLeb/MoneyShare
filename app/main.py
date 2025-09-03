@@ -7,15 +7,15 @@ from typing import List, Tuple
 from sqlmodel import Session
 
 # ⚙️ твоя инфраструктура
-from database.database import engine, init_db
+from database.database import engine, init_db, get_session
 
 # 🧱 репозитории
 from repositories import (
-    UsersRepo,
-    ChatsRepo,
-    TransactionsRepo,
-    TransactionParticipantsRepo,
-    DebtsRepo,
+    UsersRepoSqlModel,
+    ChatsRepoSqlModel,
+    TransactionsRepoSqlModel,
+    TransactionParticipantsRepoSqlModel,
+    DebtsRepoSqlModel,
 )
 
 # 💼 сервисный слой (то, что мы писали: пересчёт долгов, оптимизация переводов и т.д.)
@@ -87,34 +87,47 @@ def main():
     init_db()
 
     with session_scope() as s:
-        # инициализируем репозитории
-        users = UsersRepo(s)
-        chats = ChatsRepo(s)
-        txs = TransactionsRepo(s)
-        parts = TransactionParticipantsRepo(s)
-        debts = DebtsRepo(s)
+        # --- Репозитории (конкретные реализации) ---
+        users_repo = UsersRepoSqlModel(s)
+        chats_repo = ChatsRepoSqlModel(s)
+        tx_repo = TransactionsRepoSqlModel(s)
+        parts_repo = TransactionParticipantsRepoSqlModel(s)
+        debts_repo = DebtsRepoSqlModel(s)
 
         # и сервисы
-        tx_service = TransactionsService(txs=txs, parts=parts)
-        debt_service = DebtsService(debts=debts, parts=parts, txs=txs)
+
+        # --- Сервисы (им нужны Session и репозитории) ---
+        tx_service = TransactionsService(
+            session=s,
+            tx_repo=tx_repo,
+            parts_repo=parts_repo,
+            debts_repo=debts_repo,
+        )
+        debt_service = DebtsService(
+            session=s,
+            debts_repo=debts_repo,
+            tx_repo=tx_repo,
+            parts_repo=parts_repo,
+            users_repo=users_repo,  # пригодится для фич, где нужны данные о пользователях
+        )
+
 
         # === 1) создаём пользователей и чат
         print_header("Создаём пользователей и чат")
-        u1 = users.create(id=111, username="vasya", first_name="Вася")
-        u2 = users.create(id=222, username="petya", first_name="Петя")
-        u3 = users.create(id=333, username="masha", first_name="Маша")
+        u1 = users_repo.create(id=111, username="vasya", first_name="Вася")
+        u2 = users_repo.create(id=222, username="petya", first_name="Петя")
+        u3 = users_repo.create(id=333, username="masha", first_name="Маша")
 
-        chat = chats.create(id=-1001, title="Test Chat")
+        chat = chats_repo.create(id=-1001, title="Test Chat")
 
-        print_users(users.list(limit=100, offset=0))
-        print_chats(chats.list(limit=100, offset=0))
+        print_users(users_repo.list(limit=100, offset=0))
+        print_chats(chats_repo.list(limit=100, offset=0))
 
         # === 2) создаём 2 транзакции и участников
         print_header("Создаём транзакции и участников")
         # Тx1: создатель 111, сумма 1000, участники 222:500, 333:500 (пицца)
-        tx1 = tx_service.create(
-            chat_id=chat.id, creator_id=u1.id, amount=1000.0, title="Пицца"
-        )
+        tx1 = tx_service.create_transaction(
+            chat_id=chat.id, creator_id=u1.id, amount=1000.0, title="Пицца")
         p1 = tx_service.add_participant(
             transaction_id=tx1.id, user_id=u2.id, share_amount=500.0, tag="пицца"
         )
@@ -123,26 +136,20 @@ def main():
         )
 
         # Tx2: создатель 222, сумма 900, участники 111:450, 333:450 (ужин)
-        tx2 = tx_service.create(
-            chat_id=chat.id, creator_id=u2.id, amount=900.0, title="Ужин"
-        )
-        p3 = tx_service.add_participant(
-            transaction_id=tx2.id, user_id=u1.id, share_amount=450.0, tag="ужин"
-        )
-        p4 = tx_service.add_participant(
-            transaction_id=tx2.id, user_id=u3.id, share_amount=450.0, tag="ужин"
+        tx2 = tx_service.create_transaction_with_participants(
+            chat_id=chat.id, creator_id=u2.id, amount=900.0, title="Ужин", participants=[222, 333]
         )
 
-        print_transactions(txs.list_by_chat(chat_id=chat.id))
-        print_participants(parts.list_by_transaction(transaction_id=tx1.id))
-        print_participants(parts.list_by_transaction(transaction_id=tx2.id))
+        print_transactions(tx_repo.list_by_chat(chat_id=chat.id))
+        print_participants(parts_repo.list_by_transaction(transaction_id=tx1.id))
+        print_participants(parts_repo.list_by_transaction(transaction_id=tx2[0].id))
 
         # === 3) пересчёт долгов по чату
         print_header("Пересчитываем долги по чату")
         debt_service.recompute_chat_balances(chat_id=chat.id)
 
         print_header("Текущие долги (по чату)")
-        debts_rows = debts.list_by_chat(chat_id=chat.id, limit=1000, offset=0)
+        debts_rows = debts_repo.list_by_chat(chat_id=chat.id, limit=1000, offset=0)
         print_debts(debts_rows)
 
         # === 4) оптимальные расчёты (кто кому сколько перевести)
@@ -156,7 +163,7 @@ def main():
 
         debt_service.recompute_chat_balances(chat_id=chat.id)
         print_header("Долги после удаления участника")
-        print_debts(debts.list_by_chat(chat_id=chat.id, limit=1000, offset=0))
+        print_debts(debts_repo.list_by_chat(chat_id=chat.id, limit=1000, offset=0))
 
         # === 6) удалим целиком первую транзакцию и пересчитаем
         print_header("Удалим первую транзакцию и пересчитаем")
@@ -164,7 +171,7 @@ def main():
 
         debt_service.recompute_chat_balances(chat_id=chat.id)
         print_header("Долги после удаления транзакции")
-        print_debts(debts.list_by_chat(chat_id=chat.id, limit=1000, offset=0))
+        print_debts(debts_repo.list_by_chat(chat_id=chat.id, limit=1000, offset=0))
 
         # === 7) финальные оптимальные переводы
         print_header("Финальные оптимальные переводы")
