@@ -1,1 +1,3 @@
 # MoneyShare
+
+Вроде ок
