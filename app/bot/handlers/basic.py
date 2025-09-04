@@ -1,8 +1,11 @@
 from aiogram import Router, F
 from aiogram.enums import MessageEntityType
+from aiogram.filters import Command
 from aiogram.types import Message
 from sqlmodel import Session
 from bot.utils.ensure_ctx import ensure_user_and_chat
+from bot.utils.formatting import format_user
+from logger.logging import get_logger
 
 # репозитории и сервисы из твоего проекта:
 from repositories import (
@@ -16,6 +19,7 @@ from services.transactions_service import TransactionsService
 from services.debts_service import DebtsService
 
 router = Router()
+logger = get_logger(logger_name=__name__)
 
 
 def build_services(session: Session):
@@ -41,36 +45,36 @@ def build_services(session: Session):
     return users, chats, tx_service, debts_service
 
 
-@router.message(F.text == "/start")
+@router.message(Command('start'))
 async def cmd_start(message: Message, db_session: Session):
     await message.answer("Привет! Я помогу разделять расходы.\nКоманды: /addtx, /balance, /optimize, /settle_all, /help")
 
 
-@router.message(F.text == "/balance")
+@router.message(Command("balance"))
 async def cmd_balance(message: Message, db_session: Session):
-    _, _, _, debts_service = build_services(db_session)
+    users_repo, _, _, debts_service = build_services(db_session)
     chat_id = message.chat.id
     rows = debts_service.debts.list_by_chat(chat_id=chat_id, limit=1000, offset=0)
     if not rows:
         await message.answer("Балансов пока нет. Добавь транзакцию: /addtx 100 Пицца @user1 @user2")
         return
-    lines = [f"user {d.user_id}: {d.amount:.2f}" for d in rows]
+    lines = [f"user {format_user(d.user_id, users_repo)}: {d.amount:.2f}" for d in rows]
     await message.answer("Текущие балансы:\n" + "\n".join(lines))
 
 
-@router.message(F.text == "/optimize")
+@router.message(Command("optimize"))
 async def cmd_optimize(message: Message, db_session: Session):
-    _, _, _, debts_service = build_services(db_session)
+    users_repo, _, _, debts_service = build_services(db_session)
     chat_id = message.chat.id
     plan = debts_service.optimize_settlements(chat_id)
     if not plan:
         await message.answer("Долгов нет — всё по нулям!")
         return
-    lines = [f"{frm} → {to}: {amount:.2f}" for frm, to, amount in plan]
+    lines = [f"{format_user(frm, users_repo)} → {format_user(to, users_repo)}: {amount:.2f}" for frm, to, amount in plan]
     await message.answer("Минимальный план переводов:\n" + "\n".join(lines))
 
 
-@router.message(F.text == "/settle_all")
+@router.message(Command("settle_all"))
 async def cmd_settle_all(message: Message, db_session: Session):
     _, _, _, debts_service = build_services(db_session)
     chat_id = message.chat.id
@@ -102,7 +106,7 @@ async def cmd_addtx(message: Message, db_session: Session):
         return
 
     parts = message.text.split()
-    if len(parts) < 3:
+    if len(parts) < 2:
         await message.answer("Формат: /addtx &lt;сумма&gt; &lt;название&gt; [@user ...]")
         return
 
@@ -116,6 +120,8 @@ async def cmd_addtx(message: Message, db_session: Session):
     # 2) Собираем упоминания из entities (и @username, и text_mention)
     typed_mentions: set[int] = set()  # ID из text_mention (уверенный источник)
     at_usernames: list[str] = []      # @username (надо резолвить через БД)
+
+    logger.debug(message.entities)
 
     # Парсим entities — это точнее, чем просто искать "@"
     if message.entities:

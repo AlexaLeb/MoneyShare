@@ -1,7 +1,9 @@
-from . import basic, autoregister, help
+from . import basic, autoregister, help, adduser, transactions
 
 all_routers = [
     basic.router,
-    # autoregister.router,
-    help.router
+    help.router,
+    adduser.router,
+    transactions.router
+    # autoregister.router
 ]

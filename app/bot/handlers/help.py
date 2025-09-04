@@ -2,11 +2,12 @@ from aiogram import Router, F
 from aiogram.types import Message
 from bot.utils.ensure_ctx import ensure_user_and_chat
 from sqlmodel import Session
+from aiogram.filters import Command
 
 router = Router()
 
 
-@router.message(F.text == "/help")
+@router.message(Command("help"))
 async def cmd_help(message: Message, db_session: Session):
     text = (
         "📖 <b>Справка по командам</b>\n\n"
@@ -28,7 +29,11 @@ async def cmd_help(message: Message, db_session: Session):
         "  Пример: <code>/settle_all</code>\n\n"
 
         "🚀 <b>/start</b>\n"
-        "  Начало работы и короткая инструкция.\n"
+        "  Начало работы и короткая инструкция.\n\n"
+        
+        "👤 <b>/adduser</b>\n"
+        "Добавить пользователя в базу.\n"
+        "Пример: <code>/adduser</code> [ответ на сообщение]\n\n"
     )
     ensure_user_and_chat(db_session, tg_user=message.from_user, tg_chat=message.chat)
     await message.answer(text, parse_mode="HTML")
