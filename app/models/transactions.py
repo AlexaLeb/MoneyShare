@@ -1,14 +1,15 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import BigInteger
 
 
 class Transaction(SQLModel, table=True):
     __tablename__ = "transactions"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    chat_id: int = Field(foreign_key="chats.id")
-    creator_id: int = Field(foreign_key="users.id")
+    chat_id: int = Field(foreign_key="chats.id", sa_type=BigInteger)
+    creator_id: int = Field(foreign_key="users.id", sa_type=BigInteger)
     amount: float
     title: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

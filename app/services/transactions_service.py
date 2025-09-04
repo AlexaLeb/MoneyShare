@@ -58,7 +58,7 @@ class TransactionsService:
         creator_id: int,
         amount: float,
         title: Optional[str],
-        participants: Sequence[int],
+        participants: Sequence[Tuple[int, float, Optional[str]]],
     ) -> tuple[Transaction, list[TransactionParticipant]]:
         """
         Создаём транзакцию и её участников одной «операцией».
@@ -72,7 +72,7 @@ class TransactionsService:
         )
 
         created_parts: list[TransactionParticipant] = []
-        for user_id in participants:
+        for user_id, _, _ in participants:
             part = self.parts.create(
                 transaction_id=tx.id,
                 user_id=user_id,

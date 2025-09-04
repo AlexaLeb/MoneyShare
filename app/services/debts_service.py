@@ -123,3 +123,37 @@ class DebtsService:
                 creditors.appendleft((creditor_id, have))
 
         return settlements
+
+    # services/debts_service.py (добавь внутрь класса DebtsService)
+
+    def settle_all_debts_via_transactions(self, chat_id: int) -> list[tuple[int, int, float]]:
+        """
+        Костыльно, но просто: берём план из optimize_settlements(),
+        и для каждой пары создаём транзакцию вида:
+          - creator_id = должник (from_user)
+          - единственный участник = кредитор (to_user) с share_amount = amount
+        Затем запускаем rebuild(chat_id).
+
+        Возвращает сам план [(debtor_id, creditor_id, amount), ...].
+        ВАЖНО: метод НЕ идемпотентный — повторный запуск создаст ещё такие же транзакции.
+        """
+        plan = self.optimize_settlements(chat_id)
+
+        for debtor_id, creditor_id, amount in plan:
+            # создаём "платёжную" транзакцию
+            tx = self.txs.create(
+                chat_id=chat_id,
+                creator_id=debtor_id,
+                amount=amount,
+                title="Погашение долга",
+            )
+            self.parts.create(
+                transaction_id=tx.id,
+                user_id=creditor_id,
+                share_amount=amount,
+                tag="погашение",
+            )
+
+        # пересчитываем балансы с учётом этих транзакций
+        self.rebuild(chat_id)
+        return plan

@@ -1,6 +1,7 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import BigInteger
 
 
 class TransactionParticipant(SQLModel, table=True):
@@ -14,7 +15,7 @@ class TransactionParticipant(SQLModel, table=True):
             nullable=False,
         )
     )
-    user_id: int = Field(foreign_key="users.id")
+    user_id: int = Field(foreign_key="users.id", sa_type=BigInteger)
     share_amount: float
     tag: str = Field(default="без указания типа транзакции")
 

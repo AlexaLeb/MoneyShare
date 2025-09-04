@@ -1,7 +1,8 @@
 from sqlmodel import Session, select
 from models.users import User
-from typing import Optional, List
+from typing import Optional, List, Sequence
 from logger.logging import get_logger
+from sqlalchemy import func
 
 logger = get_logger(logger_name=__name__)
 
@@ -44,3 +45,19 @@ def delete_user(session: Session, id: int) -> bool:
 
 def list_users(session: Session, limit: int = 100, offset: int = 0) -> List[User]:
     return session.exec(select(User).offset(offset).limit(limit)).all()
+
+
+def get_user_by_username(session: Session, username: str) -> Optional[User]:
+    """Найти пользователя по username (без @), регистронезависимо."""
+    uname = username.lstrip("@").lower()
+    stmt = select(User).where(func.lower(User.username) == uname).limit(1)
+    return session.exec(stmt).first()
+
+
+def get_users_by_usernames(session: Session, usernames: Sequence[str]) -> List[User]:
+    """Найти сразу нескольких пользователей по списку username (без @), регистронезависимо."""
+    usernames_clean = [u.lstrip("@").lower() for u in usernames]
+    if not usernames_clean:
+        return []
+    stmt = select(User).where(func.lower(User.username).in_(usernames_clean))
+    return list(session.exec(stmt).all())

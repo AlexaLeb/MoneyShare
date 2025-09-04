@@ -1,11 +1,12 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import BigInteger
 
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: int = Field(primary_key=True, index=True)  # Telegram ID
+    id: int = Field(primary_key=True, index=True, sa_type=BigInteger)  # Telegram ID
     username: Optional[str] = Field(default=None)
     first_name: Optional[str] = Field(default=None)
 

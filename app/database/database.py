@@ -27,3 +27,13 @@ def init_db():
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 
+
+def ensure_schema() -> None:
+    """Создаёт недостающие таблицы (ничего не дропает)."""
+    from models.users import User
+    from models.chats import Chat
+    from models.transactions import Transaction
+    from models.transaction_participants import TransactionParticipant
+    from models.debts import Debt
+    SQLModel.metadata.create_all(engine)
+    logger.info("Проверил/создал схему БД")

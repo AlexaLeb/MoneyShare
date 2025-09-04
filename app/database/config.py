@@ -9,9 +9,7 @@ class Settings(BaseSettings):
     DB_PASS: Optional[str] = None
     DB_PORT: Optional[str] = None
     DB_NAME: Optional[str] = None
-    COOKIE_NAME: Optional[str] = None
-    SECRET_KEY: Optional[str] = None
-    API_KEY: Optional[str] = None
+    BOT_TOKEN: Optional[str] = None
 
     @property
     def DATABASE_URL_asyncpg(self) -> str:
